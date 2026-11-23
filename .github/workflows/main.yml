@@ -20,18 +20,19 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Run KSP and Inject xposed_init
+      - name: Inject Xposed Meta-Data & Assets
         run: |
           ./gradlew kspDebugKotlin --no-daemon
+
+          if ! grep -q "xposedmodule" app/src/main/AndroidManifest.xml; then
+            sed -i 's|</application>|    <meta-data android:name="xposedmodule" android:value="true" />\n        <meta-data android:name="xposeddescription" android:value="HyperTheme Fix" />\n        <meta-data android:name="xposedminversion" android:value="93" />\n    </application>|g' app/src/main/AndroidManifest.xml
+          fi
+
           mkdir -p app/src/main/assets
           FOUND_INIT=$(find app/build -name "xposed_init" | head -n 1)
           if [ -n "$FOUND_INIT" ]; then
             cp "$FOUND_INIT" app/src/main/assets/xposed_init
-            echo "Berhasil menyalin xposed_init dari $FOUND_INIT:"
-            cat app/src/main/assets/xposed_init
           else
-            echo "File xposed_init tidak ditemukan dari KSP, membuat manual..."
-            ENTRY_CLASS=$(grep -rn "@InjectYukiHookWithXposed" app/src/main/java | sed -E 's/.*package ([^;]+).*/\1/' | head -n 1)
             echo "com.chendusk.hyperthemehk.hook.HookEntry_YukiHookXposedInit" > app/src/main/assets/xposed_init
           fi
 
@@ -41,5 +42,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HyperTheme-Fix-With-Assets
+          name: HyperTheme-Fix-Final
           path: app/build/outputs/apk/debug/*.apk
